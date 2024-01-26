@@ -4,7 +4,7 @@
 ###############
 # DEFINE VARS #
 ###############
-# Which device and which related HDMI audio device. They're usually in pairs.
+# Which device and which related HDMI audio device. They're usually in pairs. Optional is to pass a USB controller
 export VGA_DEVICE=0000:12:00.0
 export AUDIO_DEVICE=0000:12:00.1
 export VGA_DEVICE_ID=1002:73ff
@@ -140,21 +140,21 @@ restart_desktop_env_prompt() {
 # MAIN #
 ########
 
-lspci -nnkd $VGA_DEVICE_ID && lspci -nnkd $AUDIO_DEVICE_ID && lspci -nnkd $USB_DEVICE_ID
+lspci -nnkd $VGA_DEVICE_ID && lspci -nnkd $AUDIO_DEVICE_ID # && lspci -nnkd $USB_DEVICE_ID
 # Bind specified graphics card and audio device to vfio.
 echo Binding specified graphics card and audio device to vfio
 
 vfiobind $VGA_DEVICE
 vfiobind $AUDIO_DEVICE
-vfiobind $USB_DEVICE
+#vfiobind $USB_DEVICE
 
-lspci -nnkd $VGA_DEVICE_ID && lspci -nnkd $AUDIO_DEVICE_ID && lspci -nnkd $USB_DEVICE_ID
+lspci -nnkd $VGA_DEVICE_ID && lspci -nnkd $AUDIO_DEVICE_ID # && lspci -nnkd $USB_DEVICE_ID
 
 sleep 5
 
 start_vm $VM_NAME
 
-su $USERNAME -c "looking-glass-client -F"
+# su $USERNAME -c "looking-glass-client -F"
 
 wait_for_vm_shutdown $VM_NAME
 
@@ -169,11 +169,11 @@ done
 # Leave vfio-pci on it.
 vfiounbind $AUDIO_DEVICE
 vfiounbind $VGA_DEVICE
-vfiounbind $USB_DEVICE
+#vfiounbind $USB_DEVICE
 
 pcirescan
 
-lspci -nnkd $VGA_DEVICE_ID && lspci -nnkd $AUDIO_DEVICE_ID && lspci -nnkd $USB_DEVICE_ID
+lspci -nnkd $VGA_DEVICE_ID && lspci -nnkd $AUDIO_DEVICE_ID # && lspci -nnkd $USB_DEVICE_ID
 
 restart_desktop_env_prompt
 
