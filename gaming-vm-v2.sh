@@ -1,10 +1,31 @@
 #!/bin/bash
-#set -e
+
+## made by 3c0m3x
+
+clear
+cat <<"EOF"
+
+  _____                 _              __      ___      _               _   __  __            _     _            
+ / ____|               (_)             \ \    / (_)    | |             | | |  \/  |          | |   (_)           
+| |  __  __ _ _ __ ___  _ _ __   __ _   \ \  / / _ _ __| |_ _   _  __ _| | | \  / | __ _  ___| |__  _ _ __   ___ 
+| | |_ |/ _` | '_ ` _ \| | '_ \ / _` |   \ \/ / | | '__| __| | | |/ _` | | | |\/| |/ _` |/ __| '_ \| | '_ \ / _ \
+| |__| | (_| | | | | | | | | | | (_| |    \  /  | | |  | |_| |_| | (_| | | | |  | | (_| | (__| | | | | | | |  __/
+ \_____|\__,_|_| |_| |_|_|_| |_|\__, |     \/   |_|_|   \__|\__,_|\__,_|_| |_|  |_|\__,_|\___|_| |_|_|_| |_|\___|
+                                 __/ |                                                                           
+                                |___/                                                                            
+EOF
 
 ###############
 # DEFINE VARS #
 ###############
-# Which device and which related HDMI audio device. They're usually in pairs. Optional is to pass a USB controller
+# This script sets up a gaming virtual machine. It requires the following variables:
+# - DEVICE: The device identifier for the GPU passthrough.
+# - HDMI_AUDIO_DEVICE: The device identifier for the HDMI audio passthrough.
+# - USB_CONTROLLER: (Optional) The device identifier for the USB controller passthrough.
+# - VM_NAME: (Optional) The name of the virtual machine.
+# - USERNAME: (Optional) The username of the user that will be used to run the looking-glass-client if you use it.
+# - MOUNT_POINT: (Optional) The mount point of the game drive that will be unmounted before starting the VM and remounted after shutting down the VM.
+
 export VGA_DEVICE=0000:12:00.0
 export AUDIO_DEVICE=0000:12:00.1
 export VGA_DEVICE_ID=1002:73ff
@@ -13,6 +34,7 @@ export USB_DEVICE=0000:30:00.4
 export USB_DEVICE_ID=1022:1639
 export VM_NAME='win11'
 export USERNAME='ecomex'
+export MOUNT_POINT='/mnt/gamedisk'
 
 #############
 # FUNCTIONS #
@@ -68,69 +90,110 @@ pcirescan() {
 }
 
 start_vm() {
-    local vm_name="$1"  # Der Name der VM wird als erster Parameter übergeben
+    local vm_name="$1"  # The name of the VM is passed as the first parameter
 
-    # Überprüfen, ob ein VM-Name angegeben wurde
+    # Check if a VM name was provided
     if [ -z "$vm_name" ]; then
-        echo "Fehler: Kein VM-Name angegeben."
-        return 1  # Beendet die Funktion mit einem Fehlerstatus
+        echo "Error: No VM name provided."
+        exit 1  # Exit the function with an error status
     fi
 
-    # Starten der VM mit dem angegebenen Namen
-    echo "Starte VM: $vm_name"
+    # Check if the VM is already running
+    if virsh list --name --state-running | grep -q "^$vm_name$"; then
+        echo "Error: The VM '$vm_name' is already running."
+        return 1  # Exit the function with an error status
+    fi
+
+    # Start the VM with the provided name
+    echo "Starting VM: $vm_name"
     virsh start "$vm_name"
 
-    # Überprüfen, ob der Startvorgang erfolgreich war
+    # Check if the startup was successful
     if [ $? -eq 0 ]; then
-        echo "VM '$vm_name' erfolgreich gestartet."
+        echo "VM '$vm_name' started successfully."
     else
-        echo "Fehler beim Starten der VM '$vm_name'."
-        return 1  # Beendet die Funktion mit einem Fehlerstatus
+        echo "Error starting VM '$vm_name'."
+        exit 1  # Exit the function with an error status
     fi
 }
 
-
 wait_for_vm_shutdown() {
-    local vm_name="$1"  # Der Name der VM wird als erster Parameter übergeben
+    local vm_name="$1"  # The name of the VM is passed as the first parameter
 
-    # Überprüfen, ob ein VM-Name angegeben wurde
+    # Check if a VM name was provided
     if [ -z "$vm_name" ]; then
-        echo "Fehler: Kein VM-Name angegeben."
-        return 1  # Beendet die Funktion mit einem Fehlerstatus
+        echo "Error: No VM name provided."
+        return 1  # Exit the function with an error status
     fi
 
-    # Warten, bis die VM heruntergefahren ist
-    echo "Warte auf das Herunterfahren der VM: $vm_name"
+    # Wait for the VM to shut down
+    echo "Waiting for VM to shut down: $vm_name"
     virsh domstate --domain "$vm_name" --reason | grep -q 'ausgeschaltet'
     while [ $? -ne 0 ]; do
-        sleep 10  # Wartet 5 Sekunden bevor erneut geprüft wird
+        sleep 10  # Wait for 5 seconds before checking again
         virsh domstate --domain "$vm_name" --reason | grep -q 'ausgeschaltet'
     done
 
-    echo "VM '$vm_name' wurde heruntergefahren."
+    echo "VM '$vm_name' has been shut down."
+}
+
+function unmount_gamedisk() {
+    local mount_point="$1"  # The mount point is passed as the first parameter
+
+    # Check if the game disk is mounted at the specified mount point
+    if findmnt -M "$mount_point" > /dev/null; then
+        echo "A file system is mounted at $mount_point. Attempting to unmount..."
+        sudo umount "$mount_point"
+        if [ $? -eq 0 ]; then
+            echo "File system successfully unmounted."
+        else
+            echo "Error unmounting the file system."
+            exit 1  # Exit the script
+        fi
+    else
+        echo "No file system mounted at $mount_point."
+    fi
+}
+
+function mount_gamedisk() {
+    local mount_point="$1"  # The mount point is passed as the first parameter
+
+    # Check if a filesystem is already mounted at the specified mount point
+    if findmnt -M "$mount_point" > /dev/null; then
+        echo "A filesystem is already mounted at $mount_point."
+    else
+        echo "No filesystem mounted at $mount_point. Attempting to mount..."
+        sudo mount -a
+        if [ $? -eq 0 ]; then
+            echo "Filesystem successfully mounted at $mount_point."
+        else
+            echo "Error mounting filesystem at $mount_point."
+            exit 1  # Exit the script
+        fi
+    fi
 }
 
 restart_desktop_env_prompt() {
     while true; do
-        read -p "Möchten Sie die Desktopumgebung neu starten? (J/N) " answer
+        read -p "Do you want to restart the desktop environment? (Y/N) " answer
 
         case $answer in
-            [Jj]* ) 
-                echo "Neustart der Desktopumgebung in:"
+            [Yy]* ) 
+                echo "Restarting the desktop environment in:"
                 for i in {5..1}; do
                     echo "$i..."
                     sleep 1
                 done
-                echo "Neustart der Desktopumgebung..."
+                echo "Restarting the desktop environment..."
                 systemctl restart sddm
                 break
                 ;;
             [Nn]* ) 
-                echo "Neustart abgelehnt."
+                echo "Restart declined."
                 break
                 ;;
             * ) 
-                echo "Bitte antworten Sie mit J oder N."
+                echo "Please answer with Y or N."
                 ;;
         esac
     done
@@ -140,40 +203,56 @@ restart_desktop_env_prompt() {
 # MAIN #
 ########
 
-lspci -nnkd $VGA_DEVICE_ID && lspci -nnkd $AUDIO_DEVICE_ID # && lspci -nnkd $USB_DEVICE_ID
-# Bind specified graphics card and audio device to vfio.
+# Display information about the specified graphics card and audio device
+lspci -nnkd $VGA_DEVICE_ID && lspci -nnkd $AUDIO_DEVICE_ID # && lspci -nnkd $USB_DEVICE_ID 
+
+# Bind specified graphics card and audio device to vfio
 echo Binding specified graphics card and audio device to vfio
 
 vfiobind $VGA_DEVICE
 vfiobind $AUDIO_DEVICE
 #vfiobind $USB_DEVICE
 
+# Display information about the bound graphics card and audio device
 lspci -nnkd $VGA_DEVICE_ID && lspci -nnkd $AUDIO_DEVICE_ID # && lspci -nnkd $USB_DEVICE_ID
+
+# Unmount the game drive
+echo "Unmounting game drive..."
+unmount_gamedisk $MOUNT_POINT
 
 sleep 5
 
+# Start the virtual machine
 start_vm $VM_NAME
 
-# su $USERNAME -c "looking-glass-client -F"
-
+# Wait for the virtual machine to shut down
 wait_for_vm_shutdown $VM_NAME
 
-echo Adios vfio, reloading the host drivers for the passedthrough devices...
+# Reload the host drivers for the passed-through devices
+echo Adios vfio, reloading the host drivers for the passed-through devices...
 echo "Rebinding in:"
 for i in {5..1}; do
     echo "$i..."
     sleep 1
 done
 
-# Don't unbind audio, because it fucks up for whatever reason.
-# Leave vfio-pci on it.
+# Unbind the audio and graphics card from vfio
+# Leave vfio-pci on the audio device
 vfiounbind $AUDIO_DEVICE
 vfiounbind $VGA_DEVICE
 #vfiounbind $USB_DEVICE
 
+# Rescan the PCI bus
 pcirescan
 
+# Display information about the unbound graphics card and audio device
 lspci -nnkd $VGA_DEVICE_ID && lspci -nnkd $AUDIO_DEVICE_ID # && lspci -nnkd $USB_DEVICE_ID
 
+# Mount the game drive
+echo "Mounting game drive..."
+mount_gamedisk $MOUNT_POINT
+
+# Prompt to restart the desktop environment
 restart_desktop_env_prompt
 
+echo "Done! Thanks for travelling with 3c0m3x! :D"
