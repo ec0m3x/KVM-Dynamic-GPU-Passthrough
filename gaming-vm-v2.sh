@@ -18,13 +18,13 @@ EOF
 ###############
 # DEFINE VARS #
 ###############
-# This script sets up a gaming virtual machine. It requires the following variables:
+# This script starts up a virtual machine with GPU passthrough. It requires the following variables:
 # - DEVICE: The device identifier for the GPU passthrough.
 # - HDMI_AUDIO_DEVICE: The device identifier for the HDMI audio passthrough.
 # - USB_CONTROLLER: (Optional) The device identifier for the USB controller passthrough.
 # - VM_NAME: (Optional) The name of the virtual machine.
 # - USERNAME: (Optional) The username of the user that will be used to run the looking-glass-client if you use it.
-# - MOUNT_POINT: (Optional) The mount point of the game drive that will be unmounted before starting the VM and remounted after shutting down the VM.
+# - MOUNT_POINT: (Optional) The mount point of the game drive that will be unmounted before starting the VM to be passed and remounted after shutting down the VM.
 
 export VGA_DEVICE=0000:12:00.0
 export AUDIO_DEVICE=0000:12:00.1
@@ -128,10 +128,10 @@ wait_for_vm_shutdown() {
 
     # Wait for the VM to shut down
     echo "Waiting for VM to shut down: $vm_name"
-    virsh domstate --domain "$vm_name" --reason | grep -q 'ausgeschaltet'
+    virsh domstate --domain "$vm_name" --reason | grep -qE 'shut off|ausgeschaltet'
     while [ $? -ne 0 ]; do
         sleep 10  # Wait for 5 seconds before checking again
-        virsh domstate --domain "$vm_name" --reason | grep -q 'ausgeschaltet'
+        virsh domstate --domain "$vm_name" --reason | grep -qE 'shut off|ausgeschaltet'
     done
 
     echo "VM '$vm_name' has been shut down."
