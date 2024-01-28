@@ -22,10 +22,7 @@ The script requires the following environment variables to be set:
 
 - VGA_DEVICE: The device identifier for the GPU passthrough.
 - AUDIO_DEVICE: The device identifier for the HDMI audio passthrough.
-- VGA_DEVICE_ID: The device ID for the GPU passthrough.
-- AUDIO_DEVICE_ID: The device ID for the HDMI audio passthrough.
 - USB_DEVICE: (Optional) The device identifier for the USB controller passthrough.
-- USB_DEVICE_ID: (Optional) The device ID for the USB controller passthrough.
 - VM_NAME: (Optional) The name of the virtual machine.
 - USERNAME: (Optional) The username of the user that will be used to run the looking-glass-client if you use it.
 - MOUNT_POINT: (Optional) The mount point of the game drive that will be unmounted before starting the VM to be passed and remounted after shutting down the VM.
