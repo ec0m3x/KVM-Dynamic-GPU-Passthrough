@@ -1,6 +1,6 @@
 ## GPU Passthrough Script
 
-This script is used to start up a virtual machine with GPU passthrough. It is designed to be run on a Linux host system.
+This script is used to start up a virtual machine for gaming with GPU passthrough. It is designed to be run on a Linux host system.
 
 Below are some of my Resources
 + https://wiki.archlinux.org/index.php/PCI_passthrough_via_OVMF
