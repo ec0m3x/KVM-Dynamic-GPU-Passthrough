@@ -2,6 +2,11 @@
 
 This script is used to start up a virtual machine with GPU passthrough. It is designed to be run on a Linux host system.
 
+Below are some of my Resources
++ https://wiki.archlinux.org/index.php/PCI_passthrough_via_OVMF
++ https://gist.github.com/MaxXor/e24094f2b0624cf702f534f1a0dea0be
++ https://github.com/ValveSoftware/Proton/wiki/Using-a-NTFS-disk-with-Linux-and-Windows
+
 ### Prerequisites
 - A Linux host system with a GPU that supports passthrough.
 - A virtual machine configured for GPU passthrough.
