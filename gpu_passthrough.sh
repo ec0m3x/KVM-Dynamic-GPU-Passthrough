@@ -22,19 +22,21 @@ EOF
 # - DEVICE: The device identifier for the GPU passthrough.
 # - HDMI_AUDIO_DEVICE: The device identifier for the HDMI audio passthrough.
 # - USB_CONTROLLER: (Optional) The device identifier for the USB controller passthrough.
-# - VM_NAME: (Optional) The name of the virtual machine.
-# - USERNAME: (Optional) The username of the user that will be used to run the looking-glass-client if you use it.
+# - VM_NAME: The name of the virtual machine.
+# - USERNAME: (Optional) The username of the user that will be used to run the looking-glass-client if you want to use it.
 # - MOUNT_POINT: (Optional) The mount point of the game drive that will be unmounted before starting the VM to be passed and remounted after shutting down the VM.
 
-export VGA_DEVICE=0000:12:00.0
+# change these according to your system
+
+export VGA_DEVICE=0000:12:00.0 #use lspci to find out the device id's
 export AUDIO_DEVICE=0000:12:00.1
 export VGA_DEVICE_ID=1002:73ff
 export AUDIO_DEVICE_ID=1002:ab28
 export USB_DEVICE=0000:30:00.4
 export USB_DEVICE_ID=1022:1639
-export VM_NAME='win11'
-export USERNAME='ecomex'
-export MOUNT_POINT='/mnt/gamedisk'
+export VM_NAME='win11' #use virsh list --all to find out the vm name
+export USERNAME='ecomex' #use whoami to find out your username
+export MOUNT_POINT='/mnt/gamedisk' #use lsblk to find out the mount point of your game drive
 
 #############
 # FUNCTIONS #
@@ -225,6 +227,15 @@ sleep 5
 # Start the virtual machine
 start_vm $VM_NAME
 
+
+# Start looking-glass-client if a username was provided
+# uncomment the following lines if you want to use looking-glass-client
+
+# if [ -n "$USERNAME" ]; then
+#     echo "Starting looking-glass-client..."
+#     sudo -u $USERNAME looking-glass-client
+# fi
+
 # Wait for the virtual machine to shut down
 wait_for_vm_shutdown $VM_NAME
 
@@ -255,4 +266,4 @@ mount_gamedisk $MOUNT_POINT
 # Prompt to restart the desktop environment
 restart_desktop_env_prompt
 
-echo "Done! Thanks for travelling with 3c0m3x! :D"
+echo "Done!"
